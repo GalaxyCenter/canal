@@ -97,14 +97,13 @@ public class RdbEtlService extends AbstractEtlService {
                     }
                     len = insertSql.length();
                     insertSql.delete(len - 1, len).append(")");
-                    logger.info("executeSqlImport sql:{}",insertSql.toString());
+
+                    logger.info("executeSqlImport sql:{}",insertSql);
                     try (Connection connTarget = targetDS.getConnection();
-                            PreparedStatement pstmt = connTarget.prepareStatement(insertSql.toString())) {
-                        connTarget.setAutoCommit(false);
+                         PreparedStatement pstmt = connTarget.prepareStatement(insertSql.toString())) {
+                        connTarget.setAutoCommit(true);
 
                         while (rs.next()) {
-                            completed = false;
-
                             pstmt.clearParameters();
 
                             // 删除数据
@@ -144,18 +143,11 @@ public class RdbEtlService extends AbstractEtlService {
                                 logger.trace("Insert into target table, sql: {}", insertSql);
                             }
 
-                            if (idx % dbMapping.getCommitBatch() == 0) {
-                                connTarget.commit();
-                                completed = true;
-                            }
                             idx++;
                             impCount.incrementAndGet();
                             if (logger.isDebugEnabled()) {
                                 logger.debug("successful import count:" + impCount.get());
                             }
-                        }
-                        if (!completed) {
-                            connTarget.commit();
                         }
                     }
 
