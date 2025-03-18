@@ -78,6 +78,7 @@ public class RdbEtlService extends AbstractEtlService {
 
             Util.sqlRS(srcDS, sql, values, rs -> {
                 int idx = 1;
+                int batchSize = 10000;
 
                 try {
                     boolean completed = false;
@@ -98,26 +99,13 @@ public class RdbEtlService extends AbstractEtlService {
                     len = insertSql.length();
                     insertSql.delete(len - 1, len).append(")");
 
-                    logger.info("executeSqlImport sql:{}",insertSql);
+                    //logger.info("executeSqlImport sql:{}",insertSql);
                     try (Connection connTarget = targetDS.getConnection();
                          PreparedStatement pstmt = connTarget.prepareStatement(insertSql.toString())) {
                         connTarget.setAutoCommit(true);
 
                         while (rs.next()) {
                             pstmt.clearParameters();
-
-                            // 删除数据
-                            Map<String, Object> pkVal = new LinkedHashMap<>();
-                            StringBuilder deleteSql = new StringBuilder(
-                                "DELETE FROM " + SyncUtil.getDbTableName(dbMapping, dataSource.getDbType()) + " WHERE ");
-                            appendCondition(dbMapping, deleteSql, pkVal, rs, backtick);
-                            try (PreparedStatement pstmt2 = connTarget.prepareStatement(deleteSql.toString())) {
-                                int k = 1;
-                                for (Object val : pkVal.values()) {
-                                    pstmt2.setObject(k++, val);
-                                }
-                                pstmt2.execute();
-                            }
 
                             int i = 1;
                             for (Map.Entry<String, String> entry : columnsMap.entrySet()) {
@@ -138,17 +126,20 @@ public class RdbEtlService extends AbstractEtlService {
                                 i++;
                             }
 
-                            pstmt.execute();
-                            if (logger.isTraceEnabled()) {
-                                logger.trace("Insert into target table, sql: {}", insertSql);
-                            }
+                            pstmt.addBatch(); // 添加到批处理
 
-                            idx++;
-                            impCount.incrementAndGet();
-                            if (logger.isDebugEnabled()) {
-                                logger.debug("successful import count:" + impCount.get());
+                            if (++idx % batchSize == 0) { // 达到批量大小时执行批处理
+                                pstmt.executeBatch();
+                                impCount.addAndGet(batchSize);
+                                if (logger.isDebugEnabled()) {
+                                    logger.debug("successful import count:" + impCount.get());
+                                }
                             }
                         }
+
+                        // 执行剩余的批处理任务
+                        pstmt.executeBatch();
+                        impCount.addAndGet(idx % batchSize);
                     }
 
                 } catch (Exception e) {
