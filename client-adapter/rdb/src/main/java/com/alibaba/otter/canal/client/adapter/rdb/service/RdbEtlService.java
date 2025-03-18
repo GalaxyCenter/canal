@@ -81,8 +81,6 @@ public class RdbEtlService extends AbstractEtlService {
                 int batchSize = 10000;
 
                 try {
-                    boolean completed = false;
-
                     StringBuilder insertSql = new StringBuilder();
                     insertSql.append("INSERT INTO ")
                         .append(SyncUtil.getDbTableName(dbMapping, dataSource.getDbType()))
@@ -99,7 +97,6 @@ public class RdbEtlService extends AbstractEtlService {
                     len = insertSql.length();
                     insertSql.delete(len - 1, len).append(")");
 
-                    //logger.info("executeSqlImport sql:{}",insertSql);
                     try (Connection connTarget = targetDS.getConnection();
                          PreparedStatement pstmt = connTarget.prepareStatement(insertSql.toString())) {
                         connTarget.setAutoCommit(true);
