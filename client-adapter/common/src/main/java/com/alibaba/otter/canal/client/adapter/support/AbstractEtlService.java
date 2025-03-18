@@ -20,7 +20,7 @@ public abstract class AbstractEtlService {
 
     private String        type;
     private AdapterConfig config;
-    private final long    CNT_PER_TASK = 10000L;
+    private final long    CNT_PER_TASK = 100000L;
 
     public AbstractEtlService(String type, AdapterConfig config){
         this.type = type;
@@ -73,7 +73,7 @@ public abstract class AbstractEtlService {
 
             // 当大于1万条记录时开启多线程
             if (cnt >= 10000) {
-                int threadCount = Runtime.getRuntime().availableProcessors();
+                int threadCount = Runtime.getRuntime().availableProcessors() * 32;
 
                 long offset;
                 long size = CNT_PER_TASK;
@@ -83,7 +83,7 @@ public abstract class AbstractEtlService {
                     logger.debug("workerCnt {} for cnt {} threadCount {}", workerCnt, cnt, threadCount);
                 }
 
-                ExecutorService executor = Util.newFixedThreadPool(threadCount, 5000L);
+                ExecutorService executor = Util.newFixedThreadPool(threadCount, 30000L);
                 List<Future<Boolean>> futures = new ArrayList<>();
                 for (long i = 0; i < workerCnt; i++) {
                     offset = size * i;
