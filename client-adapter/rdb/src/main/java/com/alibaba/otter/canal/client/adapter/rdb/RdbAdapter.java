@@ -71,7 +71,7 @@ public class RdbAdapter implements OuterAdapter {
     public void init(OuterAdapterConfig configuration, Properties envProperties) {
         this.envProperties = envProperties;
         this.configuration = configuration;
-      
+
         // 从jdbc url获取db类型
         Map<String, String> properties = configuration.getProperties();
         String dbType = JdbcUtils.getDbType(properties.get("jdbc.url"), null);
@@ -94,10 +94,13 @@ public class RdbAdapter implements OuterAdapter {
         dataSource.setPassword(properties.get("jdbc.password"));
         dataSource.setInitialSize(1);
         dataSource.setMinIdle(1);
-        dataSource.setMaxActive(30);
-        dataSource.setMaxWait(60000);
-        dataSource.setTimeBetweenEvictionRunsMillis(60000);
-        dataSource.setMinEvictableIdleTimeMillis(300000);
+        dataSource.setMaxActive(1000);
+        dataSource.setMaxWait(6000000);
+        dataSource.setTimeBetweenEvictionRunsMillis(600000);
+        dataSource.setMinEvictableIdleTimeMillis(3000000);
+        dataSource.setConnectTimeout(600000);
+        dataSource.setSocketTimeout(600000);
+        dataSource.setQueryTimeout(600000);
         dataSource.setUseUnfairLock(true);
         dataSource.setDbType(dbType);
 
