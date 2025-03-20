@@ -94,13 +94,14 @@ public class RdbAdapter implements OuterAdapter {
         dataSource.setPassword(properties.get("jdbc.password"));
         dataSource.setInitialSize(1);
         dataSource.setMinIdle(1);
-        dataSource.setMaxActive(1000);
+        dataSource.setMaxActive(100000);
         dataSource.setMaxWait(6000000);
-        dataSource.setTimeBetweenEvictionRunsMillis(600000);
+        dataSource.setTimeBetweenEvictionRunsMillis(6000000);
+        dataSource.setMaxEvictableIdleTimeMillis(6000000);
         dataSource.setMinEvictableIdleTimeMillis(3000000);
-        dataSource.setConnectTimeout(600000);
-        dataSource.setSocketTimeout(600000);
-        dataSource.setQueryTimeout(600000);
+        dataSource.setConnectTimeout(6000000);
+        dataSource.setSocketTimeout(6000000);
+        dataSource.setQueryTimeout(6000000);
         dataSource.setUseUnfairLock(true);
         dataSource.setDbType(dbType);
 

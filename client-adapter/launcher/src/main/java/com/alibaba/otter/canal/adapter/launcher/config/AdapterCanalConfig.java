@@ -62,13 +62,14 @@ public class AdapterCanalConfig extends CanalClientConfig {
                 ds.setPassword(datasourceConfig.getPassword());
                 ds.setInitialSize(1);
                 ds.setMinIdle(1);
-                ds.setMaxActive(datasourceConfig.getMaxActive());
+                ds.setMaxActive(100000);
                 ds.setMaxWait(6000000);
-                ds.setTimeBetweenEvictionRunsMillis(600000);
+                ds.setTimeBetweenEvictionRunsMillis(6000000);
                 ds.setMinEvictableIdleTimeMillis(3000000);
-                ds.setConnectTimeout(600000);
-                ds.setSocketTimeout(600000);
-                ds.setQueryTimeout(600000);
+                ds.setMaxEvictableIdleTimeMillis(6000000);
+                ds.setConnectTimeout(6000000);
+                ds.setSocketTimeout(6000000);
+                ds.setQueryTimeout(6000000);
                 ds.setValidationQuery("select 1");
                 try {
                     ds.init();
