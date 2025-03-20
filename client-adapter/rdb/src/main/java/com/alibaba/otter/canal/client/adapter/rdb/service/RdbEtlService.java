@@ -1,11 +1,9 @@
 package com.alibaba.otter.canal.client.adapter.rdb.service;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 
 import javax.sql.DataSource;
 
@@ -79,6 +77,7 @@ public class RdbEtlService extends AbstractEtlService {
             Util.sqlRS(srcDS, sql, values, rs -> {
                 int idx = 1;
                 int batchSize = 10000;
+                List<Map<String, Object>> buffer = new ArrayList<>(batchSize);
 
                 try {
                     StringBuilder insertSql = new StringBuilder();
@@ -97,48 +96,34 @@ public class RdbEtlService extends AbstractEtlService {
                     len = insertSql.length();
                     insertSql.delete(len - 1, len).append(")");
 
-                    try (Connection connTarget = targetDS.getConnection();
-                         PreparedStatement pstmt = connTarget.prepareStatement(insertSql.toString())) {
-                        connTarget.setAutoCommit(true);
-
-                        while (rs.next()) {
-                            pstmt.clearParameters();
-
-                            int i = 1;
-                            for (Map.Entry<String, String> entry : columnsMap.entrySet()) {
-                                String targetColumnName = entry.getKey();
-                                String srcColumnName = entry.getValue();
-                                if (srcColumnName == null) {
-                                    srcColumnName = targetColumnName;
-                                }
-
-                                Integer type = columnType.get(targetColumnName.toLowerCase());
-                                Object value = rs.getObject(srcColumnName);
-                                if (value != null) {
-                                    SyncUtil.setPStmt(type, pstmt, value, i);
-                                } else {
-                                    pstmt.setNull(i, type);
-                                }
-
-                                i++;
+                    while (rs.next()) {
+                        Map<String, Object> rowValues = new HashMap();
+                        for (Map.Entry<String, String> entry : columnsMap.entrySet()) {
+                            String targetColumnName = entry.getKey();
+                            String srcColumnName = entry.getValue();
+                            if (srcColumnName == null) {
+                                srcColumnName = targetColumnName;
                             }
 
-                            pstmt.addBatch(); // 添加到批处理
+                            Object value = rs.getObject(srcColumnName);
+                            rowValues.put(srcColumnName, value);
+                        }
+                        buffer.add(rowValues);
 
-                            if (++idx % batchSize == 0) { // 达到批量大小时执行批处理
-                                pstmt.executeBatch();
-                                impCount.addAndGet(batchSize);
-                                if (logger.isDebugEnabled()) {
-                                    logger.debug("successful import count:" + impCount.get());
-                                }
+                        if (++idx % batchSize == 0) { // 达到批量大小或结果集最后
+                            doBatchInsert(buffer, mapping, columnsMap, columnType, insertSql.toString());
+                            impCount.addAndGet(buffer.size());
+                            buffer.clear();
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("successful import count:" + impCount.get());
                             }
                         }
-
-                        // 执行剩余的批处理任务
-                        pstmt.executeBatch();
-                        impCount.addAndGet(idx % batchSize);
                     }
-
+                    // 处理剩余不足一批的数据
+                    if (!buffer.isEmpty()) {
+                        doBatchInsert(buffer, mapping, columnsMap, columnType, insertSql.toString());
+                        impCount.addAndGet(buffer.size());
+                    }
                 } catch (Exception e) {
                     logger.error(dbMapping.getTable() + " etl failed! ==>" + e.getMessage(), e);
                     errMsg.add(dbMapping.getTable() + " etl failed! ==>" + e.getMessage());
@@ -152,11 +137,94 @@ public class RdbEtlService extends AbstractEtlService {
         }
     }
 
+    protected void fillPreparedStatement(PreparedStatement preparedStatement, Map<String, Object> row, Map<String, String> columnsMap, Map<String, Integer> columnType)
+            throws SQLException {
+        int i = 1;
+        for (Map.Entry<String, String> entry : columnsMap.entrySet()) {
+            String targetColumnName = entry.getKey();
+            String srcColumnName = entry.getValue();
+            if (srcColumnName == null) {
+                srcColumnName = targetColumnName;
+            }
+
+            Integer type = columnType.get(targetColumnName.toLowerCase());
+            Object value = row.get(srcColumnName);
+            if (value != null) {
+                SyncUtil.setPStmt(type, preparedStatement, value, i);
+            } else {
+                preparedStatement.setNull(i, type);
+            }
+            i++;
+        }
+    }
+
+    private void doBatchInsert(List<Map<String, Object>> buffer,
+                               AdapterConfig.AdapterMapping mapping,
+                               Map<String, String> columnsMap, Map<String, Integer> columnType, String insertSql) throws SQLException {
+        Connection conn = targetDS.getConnection();
+        try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+            conn.setAutoCommit(true);
+            for (Map<String, Object> row : buffer) {
+                fillPreparedStatement(pstmt, row, columnsMap, columnType);
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+        } catch (SQLException e) {
+            logger.info("回滚批量写入, 采用单条插入的方式写入数据. 因为:" + e.getMessage());
+            conn.rollback();
+            doOneInsert(buffer, mapping, conn, columnsMap, columnType, insertSql.toString());
+        } finally {
+            Util.closeDBResources(null, conn);
+        }
+    }
+
+    private void doOneInsert(List<Map<String, Object>> buffer,
+                             AdapterConfig.AdapterMapping mapping,
+                             Connection conn,
+                             Map<String, String> columnsMap, Map<String, Integer> columnType,
+                             String insertSql) throws SQLException {
+        PreparedStatement pstmt = null;
+        DruidDataSource dataSource = (DruidDataSource) targetDS;
+        DbMapping dbMapping = (DbMapping) mapping;
+
+        for (Map<String, Object> row : buffer) {
+            try {
+                pstmt = conn.prepareStatement(insertSql);
+                conn.setAutoCommit(true);
+
+                fillPreparedStatement(pstmt, row, columnsMap, columnType);
+                pstmt.execute();
+            } catch (SQLException e) {
+                logger.info("插入数据失败, 将删除重新插入的方式. 因为:" + e.getMessage());
+                String backtick = SyncUtil.getBacktickByDbType(dataSource.getDbType());
+                try {
+                    // 删除数据
+                    Map<String, Object> pkVal = new LinkedHashMap<>();
+                    StringBuilder deleteSql = new StringBuilder(
+                            "DELETE FROM " + SyncUtil.getDbTableName(dbMapping, dataSource.getDbType()) + " WHERE ");
+                    appendCondition(dbMapping, deleteSql, pkVal, row, backtick);
+                    try (PreparedStatement pstmt2 = conn.prepareStatement(deleteSql.toString())) {
+                        int k = 1;
+                        for (Object val : pkVal.values()) {
+                            pstmt2.setObject(k++, val);
+                        }
+                        pstmt2.execute();
+                    }
+                    // 重新插入
+                    pstmt.execute();
+                } catch (SQLException e2) {
+                    logger.error("插入数据失败, 因为:" + e.getMessage());
+                }
+            } finally {
+                Util.closeDBResources(pstmt, null);
+            }
+        }
+    }
     /**
      * 拼接目标表主键where条件
      */
     private static void appendCondition(DbMapping dbMapping, StringBuilder sql, Map<String, Object> values,
-                                        ResultSet rs, String backtick) throws SQLException {
+                                        Map<String, Object> row, String backtick) throws SQLException {
         // 拼接主键
         for (Map.Entry<String, String> entry : dbMapping.getTargetPk().entrySet()) {
             String targetColumnName = entry.getKey();
@@ -165,7 +233,7 @@ public class RdbEtlService extends AbstractEtlService {
                 srcColumnName = targetColumnName;
             }
             sql.append(backtick).append(targetColumnName).append(backtick).append("=? AND ");
-            values.put(targetColumnName, rs.getObject(srcColumnName));
+            values.put(targetColumnName, row.get(srcColumnName));
         }
         int len = sql.length();
         sql.delete(len - 4, len);

@@ -235,6 +235,7 @@ public class RdbSyncService {
                     logger.debug("DML: {}", JSON.toJSONString(dml, Feature.WriteNulls));
                 }
             } catch (SQLException e) {
+                logger.error("ERROR-{}-DML: {}", e.getErrorCode(), JSON.toJSONString(dml, Feature.WriteNulls));
                 throw new RuntimeException(e);
             }
         }

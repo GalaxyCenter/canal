@@ -344,7 +344,7 @@ public class Util {
 
     /**
      * Check if the time string has millisecond or microsecond units
-     * 
+     *
      * @param timeStr time string
      * @return boolean
      */
@@ -358,7 +358,7 @@ public class Util {
 
     /**
      * Check if the datetime string has microsecond or nanosecond units
-     * 
+     *
      * @param datetimeStr datetime string
      * @return boolean
      */
@@ -375,7 +375,7 @@ public class Util {
      * values, with up to microseconds (6 digits) precision. ISO-8601 standard
      * format is with up to nanoseconds (9 digits) precision, which is sufficient
      * for storing MySQL time-related data.
-     * 
+     *
      * @param datetimeStr datetime string
      * @return LocalDateTime
      */
@@ -393,4 +393,31 @@ public class Util {
         return null;
     }
 
+    public static void closeDBResources(Statement stmt, Connection conn) {
+        closeDBResources(null, stmt, conn);
+    }
+
+    public static void closeDBResources(ResultSet rs, Statement stmt,
+                                        Connection conn) {
+        if (null != rs) {
+            try {
+                rs.close();
+            } catch (SQLException unused) {
+            }
+        }
+
+        if (null != stmt) {
+            try {
+                stmt.close();
+            } catch (SQLException unused) {
+            }
+        }
+
+        if (null != conn) {
+            try {
+                conn.close();
+            } catch (SQLException unused) {
+            }
+        }
+    }
 }
