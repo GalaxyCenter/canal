@@ -105,8 +105,10 @@ public class MappingConfig implements AdapterConfig {
         }
     }
 
-
-
+    @Override
+    public String getTableName() {
+        return dbMapping.table;
+    }
 
     public static class ColumnItem {
         private String targetColumn;

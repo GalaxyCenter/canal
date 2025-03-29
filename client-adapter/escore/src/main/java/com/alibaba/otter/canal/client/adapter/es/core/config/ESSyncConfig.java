@@ -47,6 +47,11 @@ public class ESSyncConfig implements AdapterConfig {
         return dataSourceKey;
     }
 
+    @Override
+    public String getTableName() {
+        return esMapping.index;
+    }
+
     public void setDataSourceKey(String dataSourceKey) {
         this.dataSourceKey = dataSourceKey;
     }
@@ -94,6 +99,8 @@ public class ESSyncConfig implements AdapterConfig {
     public void setEsVersion(String esVersion) {
         this.esVersion = esVersion;
     }
+
+
 
     public static class ESMapping implements AdapterMapping {
 

@@ -66,6 +66,11 @@ public class MappingConfig implements AdapterConfig {
         return hbaseMapping;
     }
 
+    @Override
+    public String getTableName() {
+        return hbaseMapping.table;
+    }
+
     public void validate() {
         if (hbaseMapping.database == null || hbaseMapping.database.isEmpty()) {
             throw new NullPointerException("hbaseMapping.database");

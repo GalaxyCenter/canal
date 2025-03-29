@@ -93,6 +93,11 @@ public class MappingConfig implements AdapterConfig {
         }
     }
 
+    @Override
+    public String getTableName() {
+        return dbMapping.table;
+    }
+
     public static class DbMapping implements AdapterMapping {
 
         private boolean             mirrorDb        = false;                 // 是否镜像库

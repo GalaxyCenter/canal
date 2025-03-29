@@ -79,6 +79,11 @@ public class MappingConfig implements AdapterConfig {
         return dbMapping;
     }
 
+    @Override
+    public String getTableName() {
+        return getDbMapping().getTable();
+    }
+
     public void validate() {
         if (dbMapping.database == null || dbMapping.database.isEmpty()) {
             throw new NullPointerException("dbMapping.database");

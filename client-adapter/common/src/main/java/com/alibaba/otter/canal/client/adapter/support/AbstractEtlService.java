@@ -80,7 +80,8 @@ public abstract class AbstractEtlService {
                 long workerCnt = cnt / size + (cnt % size == 0 ? 0 : 1);
 
                 if (logger.isDebugEnabled()) {
-                    logger.debug("workerCnt {} for cnt {} threadCount {}", workerCnt, cnt, threadCount);
+                    logger.info("table:{}, data size:{}, work thread size:{}, thread pool size:{}",
+                            config.getTableName(), cnt, workerCnt, threadCount);
                 }
 
                 ExecutorService executor = Util.newFixedThreadPool(threadCount, 30000L);
@@ -105,8 +106,9 @@ public abstract class AbstractEtlService {
                 executeSqlImport(dataSource, sql, values, config.getMapping(), impCount, errMsg);
             }
 
-            logger.info("数据全量导入完成, 一共导入 {} 条数据, 耗时: {}", impCount.get(), System.currentTimeMillis() - start);
-            etlResult.setResultMessage("导入" + type + " 数据：" + impCount.get() + " 条");
+            long diff = System.currentTimeMillis() - start;
+            logger.info("table:{}, 数据全量导入完成, 一共导入 {} 条数据, 耗时: {}", config.getTableName(), impCount.get(), diff);
+            etlResult.setResultMessage("导入" + type + " 数据：" + impCount.get() + "条,耗时: " + diff);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
             errMsg.add(type + " 数据导入异常 =>" + e.getMessage());

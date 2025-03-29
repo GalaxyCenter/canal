@@ -85,6 +85,11 @@ public class KuduMappingConfig implements AdapterConfig {
         }
     }
 
+    @Override
+    public String getTableName() {
+        return kuduMapping.table;
+    }
+
     public static class KuduMapping implements AdapterMapping {
 
         private String              database;                           // 数据库名或schema名

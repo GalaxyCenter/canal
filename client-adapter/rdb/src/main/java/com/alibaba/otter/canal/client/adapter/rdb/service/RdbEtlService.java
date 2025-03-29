@@ -115,7 +115,7 @@ public class RdbEtlService extends AbstractEtlService {
                             impCount.addAndGet(buffer.size());
                             buffer.clear();
                             if (logger.isDebugEnabled()) {
-                                logger.debug("successful import count:" + impCount.get());
+                                logger.debug("table:" + dbMapping.getTable() + "successful import count:" + impCount.get());
                             }
                         }
                     }
