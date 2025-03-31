@@ -79,10 +79,8 @@ public abstract class AbstractEtlService {
                 long size = CNT_PER_TASK;
                 long workerCnt = cnt / size + (cnt % size == 0 ? 0 : 1);
 
-                if (logger.isDebugEnabled()) {
-                    logger.info("table:{}, data size:{}, work thread size:{}, thread pool size:{}",
-                            config.getTableName(), cnt, workerCnt, threadCount);
-                }
+                logger.info("table:{}, data size:{}, work thread size:{}, thread pool size:{}",
+                        config.getTableName(), cnt, workerCnt, threadCount);
 
                 ExecutorService executor = Util.newFixedThreadPool(threadCount, 30000L);
                 List<Future<Boolean>> futures = new ArrayList<>();
