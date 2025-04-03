@@ -187,13 +187,11 @@ public class RdbEtlService extends AbstractEtlService {
             }
             pstmt.executeBatch();
         } catch (SQLException e) {
-            logger.info("回滚批量写入, 采用单条插入的方式写入数据. 因为:" + e.getMessage());
+            logger.error("回滚批量写入, 采用单条插入的方式写入数据. 因为:" + e.getMessage());
             try {
-                conn.rollback();
                 doOneInsert(buffer, mapping, conn, columnsMap, columnType, insertSql);
             } catch (SQLException e1) {
-                logger.info("写入数据失败. 因为:" + e.getMessage());
-                logger.error(e1.getMessage(), e1);
+                logger.error("写入数据失败. 因为:" + e.getMessage());
             }
         } finally {
             Util.closeDBResources(pstmt, conn);
@@ -213,13 +211,13 @@ public class RdbEtlService extends AbstractEtlService {
             try {
                 pstmt = conn.prepareStatement(insertSql);
                 conn.setAutoCommit(true);
-
                 fillPreparedStatement(pstmt, row, columnsMap, columnType);
                 pstmt.execute();
             } catch (SQLException e) {
-                logger.info("插入数据失败, 将删除重新插入的方式. 因为:" + e.getMessage());
+                logger.error("插入数据失败, 将删除重新插入的方式. 因为:" + e.getMessage());
                 String backtick = SyncUtil.getBacktickByDbType(dataSource.getDbType());
                 try {
+                    conn.setAutoCommit(false);
                     // 删除数据
                     Map<String, Object> pkVal = new LinkedHashMap<>();
                     StringBuilder deleteSql = new StringBuilder(
@@ -234,7 +232,11 @@ public class RdbEtlService extends AbstractEtlService {
                     }
                     // 重新插入
                     pstmt.execute();
+                    // 提交事务
+                    conn.commit();
                 } catch (SQLException e2) {
+                    // 回滚事务
+                    conn.rollback();
                     logger.error("插入数据失败, 因为:" + e.getMessage());
                 }
             } finally {
