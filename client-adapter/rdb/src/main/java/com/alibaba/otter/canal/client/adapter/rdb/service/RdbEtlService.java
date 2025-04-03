@@ -12,6 +12,8 @@ import com.alibaba.otter.canal.client.adapter.rdb.config.MappingConfig;
 import com.alibaba.otter.canal.client.adapter.rdb.config.MappingConfig.DbMapping;
 import com.alibaba.otter.canal.client.adapter.rdb.support.SyncUtil;
 import com.alibaba.otter.canal.client.adapter.support.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /**
  * RDB ETL 操作业务类
@@ -74,6 +76,10 @@ public class RdbEtlService extends AbstractEtlService {
                 }
             });
 
+            int threadCount = Runtime.getRuntime().availableProcessors() * 4;
+            ExecutorService executor = Util.newFixedThreadPool(threadCount, 30000L);
+            List<Future> futures = new ArrayList<>();
+
             Util.sqlRS(srcDS, sql, values, rs -> {
                 int idx = 1;
                 int batchSize = 10000;
@@ -110,13 +116,16 @@ public class RdbEtlService extends AbstractEtlService {
                         }
                         buffer.add(rowValues);
 
-                        if (++idx % batchSize == 0) { // 达到批量大小或结果集最后
-                            doBatchInsert(buffer, mapping, columnsMap, columnType, insertSql.toString());
+                        if (++idx % batchSize == 0) {
+                            List<Map<String, Object>> rows = new ArrayList<>(buffer);
+                            Future future = executor.submit(() -> doBatchInsert(rows, mapping, columnsMap, columnType, insertSql.toString()));
+                            futures.add(future);
+
                             impCount.addAndGet(buffer.size());
                             buffer.clear();
-                            if (logger.isDebugEnabled()) {
-                                logger.debug("table:" + dbMapping.getTable() + "successful import count:" + impCount.get());
-                            }
+//                            if (logger.isDebugEnabled()) {
+//                                logger.debug("table:" + dbMapping.getTable() + "successful import count:" + impCount.get());
+//                            }
                         }
                     }
                     // 处理剩余不足一批的数据
@@ -124,6 +133,11 @@ public class RdbEtlService extends AbstractEtlService {
                         doBatchInsert(buffer, mapping, columnsMap, columnType, insertSql.toString());
                         impCount.addAndGet(buffer.size());
                     }
+
+                    for (Future<Boolean> future : futures) {
+                        future.get();
+                    }
+                    executor.shutdown();
                 } catch (Exception e) {
                     logger.error(dbMapping.getTable() + " etl failed! ==>" + e.getMessage(), e);
                     errMsg.add(dbMapping.getTable() + " etl failed! ==>" + e.getMessage());
@@ -160,9 +174,12 @@ public class RdbEtlService extends AbstractEtlService {
 
     private void doBatchInsert(List<Map<String, Object>> buffer,
                                AdapterConfig.AdapterMapping mapping,
-                               Map<String, String> columnsMap, Map<String, Integer> columnType, String insertSql) throws SQLException {
-        Connection conn = targetDS.getConnection();
-        try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                               Map<String, String> columnsMap, Map<String, Integer> columnType, String insertSql) {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        try {
+            conn = targetDS.getConnection();
+            pstmt = conn.prepareStatement(insertSql);
             conn.setAutoCommit(true);
             for (Map<String, Object> row : buffer) {
                 fillPreparedStatement(pstmt, row, columnsMap, columnType);
@@ -171,10 +188,15 @@ public class RdbEtlService extends AbstractEtlService {
             pstmt.executeBatch();
         } catch (SQLException e) {
             logger.info("回滚批量写入, 采用单条插入的方式写入数据. 因为:" + e.getMessage());
-            conn.rollback();
-            doOneInsert(buffer, mapping, conn, columnsMap, columnType, insertSql.toString());
+            try {
+                conn.rollback();
+                doOneInsert(buffer, mapping, conn, columnsMap, columnType, insertSql);
+            } catch (SQLException e1) {
+                logger.info("写入数据失败. 因为:" + e.getMessage());
+                logger.error(e1.getMessage(), e1);
+            }
         } finally {
-            Util.closeDBResources(null, conn);
+            Util.closeDBResources(pstmt, conn);
         }
     }
 

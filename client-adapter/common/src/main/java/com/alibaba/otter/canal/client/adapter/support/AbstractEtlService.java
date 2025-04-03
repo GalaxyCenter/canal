@@ -2,8 +2,7 @@ package com.alibaba.otter.canal.client.adapter.support;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.sql.DataSource;
@@ -71,39 +70,8 @@ public abstract class AbstractEtlService {
                 return count == null ? 0L : count;
             });
 
-            // 当大于1万条记录时开启多线程
-            if (cnt >= 10000) {
-                int threadCount = Runtime.getRuntime().availableProcessors() * 4;
-
-                long offset;
-                long size = CNT_PER_TASK;
-                long workerCnt = cnt / size + (cnt % size == 0 ? 0 : 1);
-
-                logger.info("table:{}, data size:{}, work thread size:{}, thread pool size:{}",
-                        config.getTableName(), cnt, workerCnt, threadCount);
-
-                ExecutorService executor = Util.newFixedThreadPool(threadCount, 30000L);
-                List<Future<Boolean>> futures = new ArrayList<>();
-                for (long i = 0; i < workerCnt; i++) {
-                    offset = size * i;
-                    String sqlFinal = sql + " LIMIT " + offset + "," + size;
-                    Future<Boolean> future = executor.submit(() -> executeSqlImport(dataSource,
-                        sqlFinal,
-                        values,
-                        config.getMapping(),
-                        impCount,
-                        errMsg));
-                    futures.add(future);
-                }
-
-                for (Future<Boolean> future : futures) {
-                    future.get();
-                }
-                executor.shutdown();
-            } else {
-                executeSqlImport(dataSource, sql, values, config.getMapping(), impCount, errMsg);
-            }
-
+            logger.info("开始全量导入数据, table:{}", config.getTableName());
+            executeSqlImport(dataSource, sql, values, config.getMapping(), impCount, errMsg);
             long diff = System.currentTimeMillis() - start;
             logger.info("table:{}, 数据全量导入完成, 一共导入 {} 条数据, 耗时: {}", config.getTableName(), impCount.get(), diff);
             etlResult.setResultMessage("导入" + type + " 数据：" + impCount.get() + "条,耗时: " + diff);
