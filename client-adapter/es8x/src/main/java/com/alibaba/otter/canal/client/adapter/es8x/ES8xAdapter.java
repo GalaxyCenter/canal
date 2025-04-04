@@ -65,7 +65,7 @@ public class ES8xAdapter extends ESAdapter {
     }
 
     @Override
-    public EtlResult etl(String task, List<String> params) {
+    public EtlResult etl(String task, String writeMode, List<String> params) {
         EtlResult etlResult = new EtlResult();
         ESSyncConfig config = esSyncConfig.get(task);
         if (config != null) {

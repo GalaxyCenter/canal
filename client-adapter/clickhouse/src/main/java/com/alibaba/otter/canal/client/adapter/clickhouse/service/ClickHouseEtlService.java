@@ -41,14 +41,14 @@ public class ClickHouseEtlService extends AbstractEtlService {
         DbMapping dbMapping = config.getDbMapping();
         DruidDataSource dataSource = DatasourceConfig.DATA_SOURCES.get(config.getDataSourceKey());
         String sql = "SELECT * FROM " + SyncUtil.getSourceDbTableName(dbMapping, dataSource.getDbType());
-        return importData(sql, params);
+        return importData(null, sql, params);
     }
 
     /**
      * 执行导入
      */
     protected boolean executeSqlImport(DataSource srcDS, String sql, List<Object> values,
-                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount, List<String> errMsg) {
+                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount, String writeMode, List<String> errMsg) {
         try {
             DbMapping dbMapping = (DbMapping) mapping;
             Map<String, String> columnsMap = new LinkedHashMap<>();

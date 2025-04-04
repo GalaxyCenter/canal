@@ -225,7 +225,11 @@ public class RdbSyncService {
                 if (type != null && type.equalsIgnoreCase("INSERT")) {
                     insert(batchExecutor, config, dml);
                 } else if (type != null && type.equalsIgnoreCase("UPDATE")) {
-                    update(batchExecutor, config, dml);
+                    boolean r = update(batchExecutor, config, dml);
+                    if (!r) {
+                        batchExecutor.rollback();
+                        insert(batchExecutor, config, dml);
+                    }
                 } else if (type != null && type.equalsIgnoreCase("DELETE")) {
                     delete(batchExecutor, config, dml);
                 } else if (type != null && type.equalsIgnoreCase("TRUNCATE")) {
@@ -314,15 +318,15 @@ public class RdbSyncService {
      * @param config 配置项
      * @param dml DML数据
      */
-    private void update(BatchExecutor batchExecutor, MappingConfig config, SingleDml dml) throws SQLException {
+    private boolean update(BatchExecutor batchExecutor, MappingConfig config, SingleDml dml) throws SQLException {
         Map<String, Object> data = dml.getData();
         if (data == null || data.isEmpty()) {
-            return;
+            return false;
         }
 
         Map<String, Object> old = dml.getOld();
         if (old == null || old.isEmpty()) {
-            return;
+            return false;
         }
 
         DbMapping dbMapping = config.getDbMapping();
@@ -356,17 +360,18 @@ public class RdbSyncService {
         }
         if (!hasMatched) {
             logger.warn("Did not matched any columns to update ");
-            return;
+            return false;
         }
         int len = updateSql.length();
         updateSql.delete(len - 2, len).append(" WHERE ");
 
         // 拼接主键
         appendCondition(dbMapping, updateSql, ctype, values, data, old);
-        batchExecutor.execute(updateSql.toString(), values);
-        if (logger.isTraceEnabled()) {
+        boolean r = batchExecutor.execute(updateSql.toString(), values);
+        if (r && logger.isTraceEnabled()) {
             logger.trace("Update target table, sql: {}", updateSql);
         }
+        return r;
     }
 
     /**

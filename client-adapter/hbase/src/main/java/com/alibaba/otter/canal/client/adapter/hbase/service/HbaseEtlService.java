@@ -87,7 +87,7 @@ public class HbaseEtlService extends AbstractEtlService {
             String sql = "SELECT * FROM `" + config.getHbaseMapping().getDatabase() + "`.`" + hbaseMapping.getTable()
                          + "`";
 
-            return super.importData(sql, params);
+            return super.importData(null, sql, params);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
             errMsg.add("HBase etl error ==>" + e.getMessage());
@@ -100,7 +100,7 @@ public class HbaseEtlService extends AbstractEtlService {
      * 执行导入
      */
     protected boolean executeSqlImport(DataSource ds, String sql, List<Object> values,
-                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount, List<String> errMsg) {
+                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount, String writeMode, List<String> errMsg) {
         MappingConfig.HbaseMapping hbaseMapping = (MappingConfig.HbaseMapping) mapping;
         try {
             Util.sqlRS(ds, sql, values, rs -> {

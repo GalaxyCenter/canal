@@ -53,11 +53,12 @@ public class ESEtlService extends AbstractEtlService {
         ESMapping mapping = config.getEsMapping();
         logger.info("start etl to import data to index: {}", mapping.getIndex());
         String sql = mapping.getSql();
-        return importData(sql, params);
+        return importData(null, sql, params);
     }
 
     protected boolean executeSqlImport(DataSource ds, String sql, List<Object> values,
                                        AdapterConfig.AdapterMapping adapterMapping, AtomicLong impCount,
+                                       String writeMode,
                                        List<String> errMsg) {
         try {
             ESMapping mapping = (ESMapping) adapterMapping;

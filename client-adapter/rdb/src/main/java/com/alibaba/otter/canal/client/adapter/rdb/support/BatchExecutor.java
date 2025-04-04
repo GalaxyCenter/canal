@@ -51,7 +51,7 @@ public class BatchExecutor implements Closeable {
         values.add(valueItem);
     }
 
-    public void execute(String sql, List<Map<String, ?>> values) throws SQLException {
+    public boolean execute(String sql, List<Map<String, ?>> values) throws SQLException {
         PreparedStatement pstmt = getConn().prepareStatement(sql);
         int len = values.size();
         for (int i = 0; i < len; i++) {
@@ -60,9 +60,11 @@ public class BatchExecutor implements Closeable {
             SyncUtil.setPStmt(type, pstmt, value, i + 1);
         }
 
-        pstmt.execute();
+        int r = pstmt.executeUpdate();
         idx.incrementAndGet();
         pstmt.close();
+
+        return r != 0;
     }
 
     public void commit() throws SQLException {

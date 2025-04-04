@@ -130,7 +130,7 @@ public class HbaseAdapter implements OuterAdapter {
     }
 
     @Override
-    public EtlResult etl(String task, List<String> params) {
+    public EtlResult etl(String task, String writeMode, List<String> params) {
         EtlResult etlResult = new EtlResult();
         MappingConfig config = hbaseMapping.get(task);
         HbaseEtlService hbaseEtlService = new HbaseEtlService(hbaseTemplate, config);

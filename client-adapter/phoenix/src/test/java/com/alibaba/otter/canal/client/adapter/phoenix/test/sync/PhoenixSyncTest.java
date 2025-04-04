@@ -24,7 +24,7 @@ public class PhoenixSyncTest {
     @Test
     public void testEtl() {
         List<String> param = new ArrayList<>();
-        phoenixAdapter.etl("phoenixtest_user.yml", param);
+        phoenixAdapter.etl("phoenixtest_user.yml", null, param);
     }
     @Test
     public void testCount() {

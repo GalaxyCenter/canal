@@ -183,7 +183,7 @@ public class ClickHouseAdapter implements OuterAdapter {
      * @return ETL结果
      */
     @Override
-    public EtlResult etl(String task, List<String> params) {
+    public EtlResult etl(String task, String writeMode, List<String> params) {
         EtlResult etlResult = new EtlResult();
         MappingConfig config = clickHouseMapping.get(task);
         ClickHouseEtlService clickhouseEtlService = new ClickHouseEtlService(dataSource, config);

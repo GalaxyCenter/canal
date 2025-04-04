@@ -59,10 +59,14 @@ public class CommonRest {
      * @param type 类型 hbase, es
      * @param key adapter key
      * @param task 任务名对应配置文件名 mytest_user.yml
+     * @param writeMode 写入模式，当设置为overwrite后将执行删除重新写入的策略
      * @param params etl where条件参数, 为空全部导入
      */
     @PostMapping("/etl/{type}/{key}/{task}")
-    public EtlResult etl(@PathVariable String type, @PathVariable String key, @PathVariable String task,
+    public EtlResult etl(@PathVariable String type,
+                         @PathVariable String key,
+                         @PathVariable String task,
+                         @RequestParam(name = "writeMode", required = false) String writeMode,
                          @RequestParam(name = "params", required = false) String params) {
         if (key == null) {
             key = FileName2KeyMapping.getKey(type, task);
@@ -98,7 +102,7 @@ public class CommonRest {
                 if (params != null) {
                     paramArray = Arrays.asList(params.trim().split(";"));
                 }
-                return adapter.etl(task, paramArray);
+                return adapter.etl(task, writeMode, paramArray);
             } finally {
                 if (destination != null && oriSwitchStatus) {
                     syncSwitch.on(destination);
@@ -121,7 +125,7 @@ public class CommonRest {
     @PostMapping("/etl/{type}/{task}")
     public EtlResult etl(@PathVariable String type, @PathVariable String task,
                          @RequestParam(name = "params", required = false) String params) {
-        return etl(type, null, task, params);
+        return etl(type, null, task, "overwrite", params);
     }
 
     /**

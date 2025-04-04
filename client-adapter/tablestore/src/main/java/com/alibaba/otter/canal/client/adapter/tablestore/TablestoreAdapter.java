@@ -176,7 +176,7 @@ public class TablestoreAdapter implements OuterAdapter {
 
 
     @Override
-    public EtlResult etl(String task, List<String> params) {
+    public EtlResult etl(String task, String writeMode, List<String> params) {
         EtlResult etlResult = new EtlResult();
         MappingConfig config = tablestoreMapping.get(task);
         if (config == null) {

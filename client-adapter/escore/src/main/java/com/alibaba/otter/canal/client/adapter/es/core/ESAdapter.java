@@ -106,7 +106,7 @@ public abstract class ESAdapter implements OuterAdapter {
     }
 
     @Override
-    public abstract EtlResult etl(String task, List<String> params);
+    public abstract EtlResult etl(String task, String writeMode, List<String> params);
 
     @Override
     public abstract Map<String, Object> count(String task);

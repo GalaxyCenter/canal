@@ -48,12 +48,12 @@ public class KuduEtlService extends AbstractEtlService {
         }
         logger.info("{} etl is starting!", kuduMapping.getTargetTable());
         String sql = "SELECT * FROM " + SyncUtil.getDbTableName(kuduMapping);
-        return importData(sql, params);
+        return importData(null, sql, params);
     }
 
     @Override
     protected boolean executeSqlImport(DataSource ds, String sql, List<Object> values,
-                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount, List<String> errMsg) {
+                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount, String writeMode, List<String> errMsg) {
         KuduMappingConfig.KuduMapping kuduMapping = (KuduMappingConfig.KuduMapping) mapping;
         // 获取字段元数据
         Map<String, String> columnsMap = new LinkedHashMap<>();// 需要同步的字段

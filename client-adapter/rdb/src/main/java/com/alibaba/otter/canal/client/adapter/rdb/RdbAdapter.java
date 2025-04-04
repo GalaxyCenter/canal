@@ -170,19 +170,19 @@ public class RdbAdapter implements OuterAdapter {
      * @return ETL结果
      */
     @Override
-    public EtlResult etl(String task, List<String> params) {
+    public EtlResult etl(String task, String writeMode, List<String> params) {
         EtlResult etlResult = new EtlResult();
         MappingConfig config = rdbMapping.get(task);
         RdbEtlService rdbEtlService = new RdbEtlService(dataSource, config);
         if (config != null) {
-            return rdbEtlService.importData(params);
+            return rdbEtlService.importData(writeMode, params);
         } else {
             StringBuilder resultMsg = new StringBuilder();
             boolean resSucc = true;
             for (MappingConfig configTmp : rdbMapping.values()) {
                 // 取所有的destination为task的配置
                 if (configTmp.getDestination().equals(task)) {
-                    EtlResult etlRes = rdbEtlService.importData(params);
+                    EtlResult etlRes = rdbEtlService.importData(writeMode, params);
                     if (!etlRes.getSucceeded()) {
                         resSucc = false;
                         resultMsg.append(etlRes.getErrorMessage()).append("\n");

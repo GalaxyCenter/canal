@@ -28,7 +28,7 @@ public class TestSyncKudu {
     @Test
     public void testEtl() {
         List<String> param = new ArrayList<>();
-        kuduAdapter.etl("kudutest_user.yml", param);
+        kuduAdapter.etl("kudutest_user.yml", null, param);
     }
 
     @Test

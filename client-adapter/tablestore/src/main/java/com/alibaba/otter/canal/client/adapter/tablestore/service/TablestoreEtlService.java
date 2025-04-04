@@ -40,12 +40,14 @@ public class TablestoreEtlService extends AbstractEtlService {
     public EtlResult importData(List<String> params) {
         MappingConfig.DbMapping dbMapping = config.getDbMapping();
         String sql = "SELECT * FROM " + SyncUtil.getDbTableName(dbMapping.getDatabase(), dbMapping.getTable());
-        return importData(sql, params);
+        return importData(null, sql, params);
     }
 
     @Override
     protected boolean executeSqlImport(DataSource srcDS, String sql, List<Object> values,
-                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount, List<String> errMsg) {
+                                       AdapterConfig.AdapterMapping mapping, AtomicLong impCount,
+                                       String writeMode,
+                                       List<String> errMsg) {
 
         try {
             MappingConfig.DbMapping dbMapping = (MappingConfig.DbMapping) mapping;

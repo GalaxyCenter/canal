@@ -26,7 +26,7 @@ public abstract class AbstractEtlService {
         this.config = config;
     }
 
-    protected EtlResult importData(String sql, List<String> params) {
+    protected EtlResult importData(String writeMode, String sql, List<String> params) {
         EtlResult etlResult = new EtlResult();
         AtomicLong impCount = new AtomicLong();
         List<String> errMsg = new ArrayList<>();
@@ -71,7 +71,7 @@ public abstract class AbstractEtlService {
             });
 
             logger.info("开始全量导入数据, table:{}", config.getTableName());
-            executeSqlImport(dataSource, sql, values, config.getMapping(), impCount, errMsg);
+            executeSqlImport(dataSource, sql, values, config.getMapping(), impCount, writeMode, errMsg);
             long diff = System.currentTimeMillis() - start;
             logger.info("table:{}, 数据全量导入完成, 一共导入 {} 条数据, 耗时: {}", config.getTableName(), impCount.get(), diff);
             etlResult.setResultMessage("导入" + type + " 数据：" + impCount.get() + "条,耗时: " + diff);
@@ -89,6 +89,7 @@ public abstract class AbstractEtlService {
 
     protected abstract boolean executeSqlImport(DataSource ds, String sql, List<Object> values,
                                                 AdapterConfig.AdapterMapping mapping, AtomicLong impCount,
+                                                String writeMode,
                                                 List<String> errMsg);
 
 }

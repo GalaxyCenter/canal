@@ -56,10 +56,10 @@ public class ProxyOuterAdapter implements OuterAdapter {
     }
 
     @Override
-    public EtlResult etl(String task, List<String> params) {
+    public EtlResult etl(String task, String writeMode, List<String> params) {
         ClassLoader cl = changeCL();
         try {
-            return OuterAdapter.super.etl(task, params);
+            return OuterAdapter.super.etl(task, writeMode, params);
         } finally {
             revertCL(cl);
         }
