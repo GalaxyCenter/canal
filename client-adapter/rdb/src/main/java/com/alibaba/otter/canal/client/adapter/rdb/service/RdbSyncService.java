@@ -229,6 +229,7 @@ public class RdbSyncService {
                     if (!r) {
                         batchExecutor.rollback();
                         insert(batchExecutor, config, dml);
+                        batchExecutor.commit();
                     }
                 } else if (type != null && type.equalsIgnoreCase("DELETE")) {
                     delete(batchExecutor, config, dml);
